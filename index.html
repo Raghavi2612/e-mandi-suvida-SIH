@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Mandi Procurement & Queue Management System</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            agri: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              200: '#bbf7d0',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              800: '#166534',
+              900: '#14532d',
+            },
+            amber: {
+              500: '#f59e0b',
+              600: '#d97706',
+            },
+            navy: {
+              900: '#0f172a',
+              800: '#1e293b',
+              700: '#334155'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- React & ReactDOM CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <!-- Babel for JSX compilation -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    @keyframes pulse-subtle {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(1.02); }
+    }
+    .animate-pulse-subtle { animation: pulse-subtle 3s infinite ease-in-out; }
+    .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+    body { background-color: #f8fafc; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; }
+  </style>
+</head>
+<body class="text-slate-800 bg-slate-50 min-h-screen antialiased selection:bg-agri-500 selection:text-white">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    // --- TRANSLATIONS DICTIONARY ---
+    const TRANSLATIONS = {
+      en: {
+        appTitle: "e-Mandi Suvidha",
+        tagline: "Smart Agriculture Procurement & Scheduling Platform",
+        roleFarmer: "Farmer Portal",
+        roleOfficer: "Procurement Officer / Admin",
+        liveMandi: "Active Mandi: Karnal Grain Market #4",
+        statusOnline: "System Operational",
+        tabBook: "Smart Slot Booking",
+        tabQueue: "Live Token Tracker",
+        tabSms: "Feature Phone (SMS/USSD)",
+        tabScan: "Gate Check-in Desk",
+        tabQuality: "Quality & MSP Evaluator",
+        tabTraffic: "Mandi Queue & Traffic",
+        tabAnalytics: "Predictive Analytics",
+        cropWheat: "Wheat (गेहूं)",
+        cropPaddy: "Paddy / Rice (धान)",
+        cropMaize: "Maize (मक्का)",
+        cropChana: "Gram / Chana (चना)",
+        mspRate: "Govt MSP Rate",
+        selectCrop: "Select Crop Commodity",
+        cropWeight: "Crop Weight (Quintals)",
+        preferredDate: "Preferred Arrival Date",
+        preferredSlot: "Preferred Time Window",
+        capacityMeter: "Mandi Slot Occupancy",
+        bookNow: "Confirm & Generate Token",
+        tokenGenerated: "Procurement Pass Issued!",
+        tokenId: "Token ID",
+        gate: "Allocated Entry Gate",
+        estWait: "Est. Waiting Time",
+        dbtStatus: "DBT Direct Payout",
+        printCard: "Print / Save Pass",
+        stage1: "Slot Booked",
+        stage2: "Gate Checked-In",
+        stage3: "Quality Inspected",
+        stage4: "Weighbridge Weighed",
+        stage5: "Payment Initiated",
+        stage6: "Disbursed to Bank",
+        smsHeading: "Offline Inclusivity SMS & USSD Simulator",
+        smsSubtitle: "No Smartphone required. Test booking & checking status via plain text SMS or *99*4# USSD.",
+        gradeA: "Grade A (100% MSP Payout)",
+        gradeStandard: "Standard (Fine / Penalty Applied)",
+        gradeRejected: "Rejected (Exceeds Moisture/Foreign Limits)",
+        moisture: "Moisture Content (%)",
+        foreignMatter: "Foreign Matter (%)",
+        damagedGrain: "Damaged / Discolored (%)",
+        baseMsp: "Base MSP (per Quintal)",
+        netDeduction: "Quality Penalty Deduction",
+        totalPayout: "Net Total Farmer Payout",
+        approvePayment: "Approve Inspection & Trigger DBT",
+        trafficBottleneck: "Peak Bottleneck Hours: 11:00 AM - 01:00 PM",
+        capacityGraphTitle: "Hourly Vehicle Arrivals vs Weighbridge Processing Capacity",
+        dailyTarget: "Daily Procurement Volume Target",
+        totalDisbursedToday: "Total Payout Disbursed Today",
+      },
+      hi: {
+        appTitle: "ई-मंडी सुविधा (e-Mandi)",
+        tagline: "स्मार्ट कृषि खरीद एवं शेड्यूलिंग प्लेटफॉर्म",
+        roleFarmer: "किसान पोर्टल (Farmer Portal)",
+        roleOfficer: "खरीद अधिकारी / एडमिन डैशबोर्ड",
+        liveMandi: "सक्रिय मंडी: करनाल अनाज मंडी #4",
+        statusOnline: "प्रणाली ऑनलाइन",
+        tabBook: "स्मार्ट स्लॉट बुकिंग",
+        tabQueue: "लाइव टोकन ट्रैकर",
+        tabSms: "फीचर फोन (SMS/USSD) सेवा",
+        tabScan: "गेट चेक-इन डेस्क",
+        tabQuality: "गुणवत्ता एवं एमएसपी जांच",
+        tabTraffic: "मंडी ट्रैफिक एवं कतार",
+        tabAnalytics: "पूर्वानुमानित विश्लेषण (Analytics)",
+        cropWheat: "गेहूं (Wheat)",
+        cropPaddy: "धान (Paddy)",
+        cropMaize: "मक्का (Maize)",
+        cropChana: "चना (Chana)",
+        mspRate: "सरकारी न्यूनतम समर्थन मूल्य (MSP)",
+        selectCrop: "फसल का प्रकार चुनें",
+        cropWeight: "फसल वजन (क्विंटल में)",
+        preferredDate: "पसंदीदा आगमन तिथि",
+        preferredSlot: "समय विंडो चुनें",
+        capacityMeter: "मंडी स्लॉट उपलब्धता",
+        bookNow: "बुकिंग पुष्टि करें एवं टोकन पाएं",
+        tokenGenerated: "खरीद पास जारी!",
+        tokenId: "टोकन नंबर",
+        gate: "आवंटित प्रवेश द्वार",
+        estWait: "अनुमानित प्रतीक्षा समय",
+        dbtStatus: "डीबीटी बैंक भुगतान",
+        printCard: "पास प्रिंट करें",
+        stage1: "स्लॉट बुक हुआ",
+        stage2: "गेट चेक-इन संपन्न",
+        stage3: "गुणवत्ता निरीक्षण पूर्ण",
+        stage4: "धर्मकांटा (वजन) पूर्ण",
+        stage5: "भुगतान शुरू किया गया",
+        stage6: "बैंक खाते में राशि प्रेषित",
+        smsHeading: "बिना इंटरनेट SMS एवं USSD सिम्युलेटर",
+        smsSubtitle: "साधारण फोन से 'BOOK WHEAT 50 12OCT' या *99*4# डायल करके तुरंत स्लॉट बुक करें।",
+        gradeA: "ग्रेड A (100% पूर्ण एमएसपी भुगतान)",
+        gradeStandard: "मानक ग्रेड (मामूली कटौती लागू)",
+        gradeRejected: "अस्वीकृत (नमी या कचरा सीमा से अधिक)",
+        moisture: "नमी की मात्रा (Moisture %)",
+        foreignMatter: "विजातीय पदार्थ (Foreign Matter %)",
+        damagedGrain: "क्षतिग्रस्त दाने (%)",
+        baseMsp: "आधार एमएसपी दर (प्रति क्विंटल)",
+        netDeduction: "गुणवत्ता पेनल्टी कटौती",
+        totalPayout: "किसान को देय शुद्ध राशि",
+        approvePayment: "गुणवत्ता स्वीकृत करें एवं DBT भेजें",
+        trafficBottleneck: "अधिकतम भीड़ समय: सुबह 11:00 से दोपहर 01:00 बजे",
+        capacityGraphTitle: "घंटेवार वाहन आगमन बनाम धर्मकांटा क्षमता",
+        dailyTarget: "दैनिक खरीद लक्ष्य प्रगति",
+        totalDisbursedToday: "आज वितरित कुल एमएसपी राशि",
+      },
+      ta: {
+        appTitle: "மின்-மண்டி சேவை (e-Mandi)",
+        tagline: "ஸ்மார்ட் விவசாயக் கொள்முதல் மற்றும் அட்டவணை தளம்",
+        roleFarmer: "விவசாயி போர்டல் (Farmer Portal)",
+        roleOfficer: "கொள்முதல் அதிகாரி / டாஷ்போர்டு",
+        liveMandi: "செயலில் உள்ள மண்டி: கர்னால் தானிய சந்தை #4",
+        statusOnline: "அமைப்பில் ஆன்லைன்",
+        tabBook: "ஸ்மார்ட் முன்பதிவு",
+        tabQueue: "நேரலை டோக்கன் கண்காணிப்பு",
+        tabSms: "SMS / USSD சேவை",
+        tabScan: "வாயில் சரிபார்ப்பு",
+        tabQuality: "தர சோதனை மற்றும் MSP",
+        tabTraffic: "மண்டி போக்குவரத்து நிர்வாகம்",
+        tabAnalytics: "முன்கணிப்பு பகுப்பாய்வு",
+        cropWheat: "கோதுமை (Wheat)",
+        cropPaddy: "நெல் (Paddy)",
+        cropMaize: "சோளம் (Maize)",
+        cropChana: "கொண்டைக்கடலை (Chana)",
+        mspRate: "அரசு MSP விலை",
+        selectCrop: "பயிரைத் தேர்ந்தெடுக்கவும்",
+        cropWeight: "பயிர் எடை (குவிண்டால்)",
+        preferredDate: "விரும்பிய தேதி",
+        preferredSlot: "நேர இடைவெளி",
+        capacityMeter: "மண்டி இட அளவு",
+        bookNow: "டோக்கன் பெறுக",
+        tokenGenerated: "கொள்முதல் பாஸ் வழங்கப்பட்டது!",
+        tokenId: "டோக்கன் எண்",
+        gate: "ஒதுக்கப்பட்ட நுழைவு வாயில்",
+        estWait: "எதிர்பார்க்கப்படும் காத்திருப்பு நேரம்",
+        dbtStatus: "வங்கி நேரடி பணம் transfer",
+        printCard: "அச்சிடுக",
+        stage1: "பதிவு செய்யப்பட்டது",
+        stage2: "வாயில் சரிபார்க்கப்பட்டது",
+        stage3: "தர பரிசோதனை முடிந்தது",
+        stage4: "எடை மேடை முடிந்தது",
+        stage5: "பணம் செலுத்துதல் தொடங்கப்பட்டது",
+        stage6: "வங்கி கணக்கில் செலுத்தப்பட்டது",
+        smsHeading: "இன்டர்நெட் இல்லாத SMS மற்றும் USSD சிமுலேட்டர்",
+        smsSubtitle: "சாதாரண மொபைலில் SMS 'BOOK PADDY 50 12OCT' மூலம் முன்பதிவு செய்யலாம்.",
+        gradeA: "கிரேடு A (100% முழு தொகை)",
+        gradeStandard: "சாதாரண தரம் (சிறு பிடித்தம் உண்டு)",
+        gradeRejected: "நிராகரிக்கப்பட்டது",
+        moisture: "ஈரப்பதம் (%)",
+        foreignMatter: "அன்னிய பொருட்கள் (%)",
+        damagedGrain: "சேதமடைந்த தானியம் (%)",
+        baseMsp: "அடிப்படை MSP விலை",
+        netDeduction: "பிடித்தம்",
+        totalPayout: "மொத்த தொகை",
+        approvePayment: "ஒப்புதல் அளித்து வங்கியில் செலுத்துக",
+        trafficBottleneck: "அதிக போக்குவரத்து நேரம்: 11:00 AM - 01:00 PM",
+        capacityGraphTitle: "வாகன வருகை மற்றும் எடை மேடை திறன்",
+        dailyTarget: "தினசரி கொள்முதல் இலக்கு",
+        totalDisbursedToday: "இன்று வழங்கப்பட்ட மொத்த MSP தொகை",
+      }
+    };
+
+    // MSP Rates for Commodities (in INR per Quintal)
+    const MSP_RATES = {
+      Wheat: 2275,
+      Paddy: 2183,
+      Maize: 2090,
+      Chana: 5440
+    };
+
+    // --- PRE-LOADED REALISTIC DEMO TOKENS ---
+    const INITIAL_TOKENS = [
+      {
+        id: "TKN-2026-9842",
+        farmerName: "Ramesh Kumar Singh",
+        phone: "+91 98765 43210",
+        village: "Taraori, Karnal",
+        crop: "Wheat",
+        weight: 65,
+        date: "2026-09-29",
+        timeSlot: "08:00 AM - 10:00 AM",
+        gate: "Gate No. 2",
+        stage: 2, // Gate Checked-In
+        estWaitMinutes: 18,
+        queueNumber: "W-014",
+        vehicleNo: "HR-05-AB-4821",
+        moisture: 11.2,
+        foreignMatter: 0.8,
+        damagedGrain: 0.5,
+        grade: "Grade A",
+        baseMsp: 2275,
+        penalty: 0,
+        netPayout: 147875,
+        timestamp: "08:15 AM"
+      },
+      {
+        id: "TKN-2026-9843",
+        farmerName: "Harpreet Singh Dhillon",
+        phone: "+91 98123 76543",
+        village: "Gharaunda, Karnal",
+        crop: "Paddy",
+        weight: 120,
+        date: "2026-09-29",
+        timeSlot: "10:00 AM - 12:00 PM",
+        gate: "Gate No. 1",
+        stage: 3, // Quality Inspection
+        estWaitMinutes: 10,
+        queueNumber: "P-022",
+        vehicleNo: "HR-05-C-9910",
+        moisture: 14.8,
+        foreignMatter: 1.5,
+        damagedGrain: 2.1,
+        grade: "Standard",
+        baseMsp: 2183,
+        penalty: 25,
+        netPayout: 258960,
+        timestamp: "09:30 AM"
+      },
+      {
+        id: "TKN-2026-9844",
+        farmerName: "Suresh Patel",
+        phone: "+91 97234 56789",
+        village: "Assandh, Karnal",
+        crop: "Maize",
+        weight: 45,
+        date: "2026-09-29",
+        timeSlot: "12:00 PM - 02:00 PM",
+        gate: "Gate No. 3",
+        stage: 5, // Payment Initiated
+        estWaitMinutes: 0,
+        queueNumber: "M-008",
+        vehicleNo: "HR-05-D-1204",
+        moisture: 10.5,
+        foreignMatter: 0.5,
+        damagedGrain: 0.8,
+        grade: "Grade A",
+        baseMsp: 2090,
+        penalty: 0,
+        netPayout: 94050,
+        timestamp: "10:45 AM"
+      },
+      {
+        id: "TKN-2026-9845",
+        farmerName: "Vijay Lakshmi Swaminathan",
+        phone: "+91 94432 10987",
+        village: "Indri, Karnal",
+        crop: "Chana",
+        weight: 80,
+        date: "2026-09-29",
+        timeSlot: "02:00 PM - 04:00 PM",
+        gate: "Gate No. 2",
+        stage: 1, // Slot Booked
+        estWaitMinutes: 45,
+        queueNumber: "C-005",
+        vehicleNo: "HR-05-E-7890",
+        moisture: 9.0,
+        foreignMatter: 0.2,
+        damagedGrain: 0.3,
+        grade: "Grade A",
+        baseMsp: 5440,
+        penalty: 0,
+        netPayout: 435200,
+        timestamp: "11:20 AM"
+      }
+    ];
+
+    // SVG QR Code Generator Component
+    const SVGQRCodeCard = ({ token }) => {
+      return (
+        <div className="bg-white border-2 border-slate-200 rounded-2xl p-5 shadow-lg relative overflow-hidden text-center max-w-sm mx-auto">
+          <div className="absolute top-0 right-0 bg-agri-600 text-white text-xs font-bold px-4 py-1 rounded-bl-xl uppercase tracking-wider">
+            Verified Pass
+          </div>
+          <div className="flex items-center justify-center gap-2 mb-3 text-agri-700 font-extrabold text-lg">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+            <span>Govt. Mandi E-Pass</span>
+          </div>
+
+          <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl mb-4 flex flex-col items-center justify-center">
+            {/* Dynamic SVG QR Code Simulation */}
+            <svg className="w-36 h-36 border-4 border-white shadow-md bg-white rounded-lg p-2" viewBox="0 0 100 100">
+              <rect width="100" height="100" fill="#ffffff" />
+              {/* Corner Position Detection Patterns */}
+              <rect x="5" y="5" width="30" height="30" fill="#0f172a" />
+              <rect x="10" y="10" width="20" height="20" fill="#ffffff" />
+              <rect x="15" y="15" width="10" height="10" fill="#16a34a" />
+
+              <rect x="65" y="5" width="30" height="30" fill="#0f172a" />
+              <rect x="70" y="10" width="20" height="20" fill="#ffffff" />
+              <rect x="75" y="15" width="10" height="10" fill="#16a34a" />
+
+              <rect x="5" y="65" width="30" height="30" fill="#0f172a" />
+              <rect x="10" y="70" width="20" height="20" fill="#ffffff" />
+              <rect x="15" y="75" width="10" height="10" fill="#16a34a" />
+
+              {/* Data Blocks */}
+              <rect x="42" y="10" width="8" height="8" fill="#0f172a" />
+              <rect x="52" y="18" width="8" height="8" fill="#16a34a" />
+              <rect x="42" y="42" width="16" height="16" fill="#0f172a" />
+              <rect x="65" y="42" width="8" height="8" fill="#16a34a" />
+              <rect x="75" y="52" width="10" height="10" fill="#0f172a" />
+              <rect x="10" y="45" width="8" height="8" fill="#16a34a" />
+              <rect x="22" y="42" width="8" height="8" fill="#0f172a" />
+              <rect x="42" y="65" width="12" height="12" fill="#16a34a" />
+              <rect x="65" y="65" width="15" height="15" fill="#0f172a" />
+              <rect x="82" y="82" width="8" height="8" fill="#16a34a" />
+            </svg>
+            <p className="font-mono text-base font-extrabold text-slate-900 mt-2 tracking-wider">{token.id}</p>
+            <p className="text-xs text-slate-500">Scan at Gate Entry Scanner</p>
+          </div>
+
+          <div className="space-y-2 text-left text-xs font-medium text-slate-700 bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-100">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Farmer:</span>
+              <span className="font-bold text-slate-900">{token.farmerName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Commodity:</span>
+              <span className="font-bold text-agri-700">{token.crop} ({token.weight} Quintals)</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Time Slot:</span>
+              <span className="font-semibold text-slate-800">{token.timeSlot}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Allocated Gate:</span>
+              <span className="font-bold text-amber-600">{token.gate}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Est. Payout (Govt MSP):</span>
+              <span className="font-extrabold text-agri-800">₹{token.netPayout.toLocaleString('en-IN')}</span>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // --- MAIN APP COMPONENT ---
+    function MandiApp() {
+      const [role, setRole] = useState('farmer'); // 'farmer' or 'officer'
+      const [lang, setLang] = useState('en'); // 'en', 'hi', 'ta'
+      const [activeTab, setActiveTab] = useState('book'); // farmer: book, queue, sms | officer: scan, quality, traffic, analytics
+      const [tokens, setTokens] = useState(INITIAL_TOKENS);
+      const [selectedTokenId, setSelectedTokenId] = useState(INITIAL_TOKENS[0].id);
+      
+      // Booking Form State
+      const [bookingForm, setBookingForm] = useState({
+        farmerName: "Gurpreet Singh",
+        phone: "98765 12345",
+        village: "Nilokheri, Karnal",
+        crop: "Wheat",
+        weight: 50,
+        date: new Date().toISOString().split('T')[0],
+        timeSlot: "08:00 AM - 10:00 AM"
+      });
+      const [newlyCreatedToken, setNewlyCreatedToken] = useState(null);
+
+      // Officer Scanner State
+      const [scanInput, setScanInput] = useState("");
+      const [scannedResultToken, setScannedResultToken] = useState(null);
+      const [scanSuccessMsg, setScanSuccessMsg] = useState("");
+
+      // Digital Quality Inspector Form State
+      const [inspectionTokenId, setInspectionTokenId] = useState(INITIAL_TOKENS[0].id);
+      const [qualityMetrics, setQualityMetrics] = useState({
+        moisture: 11.5,
+        foreignMatter: 0.8,
+        damagedGrain: 0.5
+      });
+      const [qualityApprovedMsg, setQualityApprovedMsg] = useState("");
+
+      // Feature Phone SMS Simulator State
+      const [smsInput, setSmsInput] = useState("BOOK WHEAT 50 12OCT");
+      const [smsHistory, setSmsHistory] = useState([
+        { sender: "system", text: "Welcome to e-Mandi SMS Booking. Reply BOOK <CROP> <WEIGHT_QUINTALS> <DATE> or STATUS <TOKEN_ID>.", time: "09:00 AM" }
+      ]);
+
+      // Live Clock
+      const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+      useEffect(() => {
+        const timer = setInterval(() => {
+          setCurrentTime(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+        }, 1000);
+        return () => clearInterval(timer);
+      }, []);
+
+      const t = TRANSLATIONS[lang];
+
+      // Selected Token Object
+      const activeToken = useMemo(() => {
+        return tokens.find(tk => tk.id === selectedTokenId) || tokens[0];
+      }, [tokens, selectedTokenId]);
+
+      // Inspection Active Token Object
+      const activeInspectionToken = useMemo(() => {
+        return tokens.find(tk => tk.id === inspectionTokenId) || tokens[0];
+      }, [tokens, inspectionTokenId]);
+
+      // Calculate Dynamic Slot Capacity Percentage
+      const currentSlotOccupancy = useMemo(() => {
+        const bookedCount = tokens.filter(tk => tk.timeSlot === bookingForm.timeSlot && tk.crop === bookingForm.crop).length;
+        const basePct = 62 + (bookedCount * 12);
+        return Math.min(basePct, 98);
+      }, [tokens, bookingForm.timeSlot, bookingForm.crop]);
+
+      // Handle New Booking Submission
+      const handleBookSlot = (e) => {
+        e.preventDefault();
+        const nextNum = 9840 + tokens.length + 1;
+        const generatedId = `TKN-2026-${nextNum}`;
+        const baseMsp = MSP_RATES[bookingForm.crop] || 2200;
+        const estPayout = baseMsp * Number(bookingForm.weight);
+
+        const newToken = {
+          id: generatedId,
+          farmerName: bookingForm.farmerName || "Farmer",
+          phone: "+91 " + (bookingForm.phone || "99999 88888"),
+          village: bookingForm.village || "Karnal",
+          crop: bookingForm.crop,
+          weight: Number(bookingForm.weight),
+          date: bookingForm.date,
+          timeSlot: bookingForm.timeSlot,
+          gate: "Gate No. " + (Math.floor(Math.random() * 3) + 1),
+          stage: 1, // Slot Booked
+          estWaitMinutes: 25,
+          queueNumber: bookingForm.crop[0] + "-0" + (tokens.length + 5),
+          vehicleNo: "HR-05-X-" + Math.floor(1000 + Math.random() * 9000),
+          moisture: 10.5,
+          foreignMatter: 0.6,
+          damagedGrain: 0.4,
+          grade: "Grade A",
+          baseMsp: baseMsp,
+          penalty: 0,
+          netPayout: estPayout,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        setTokens([newToken, ...tokens]);
+        setSelectedTokenId(generatedId);
+        setNewlyCreatedToken(newToken);
+      };
+
+      // Quality Grade Calculation Logic
+      const evaluatedGrade = useMemo(() => {
+        const { moisture, foreignMatter, damagedGrain } = qualityMetrics;
+        if (moisture > 15.0 || foreignMatter > 3.0 || damagedGrain > 4.0) {
+          return { grade: "Rejected", penaltyPerQuintal: 0, statusClass: "bg-red-100 text-red-700 border-red-200" };
+        } else if (moisture > 12.0 || foreignMatter > 1.2 || damagedGrain > 1.5) {
+          const penalty = Math.round((moisture - 12.0) * 15 + (foreignMatter - 1.2) * 20);
+          return { grade: "Standard", penaltyPerQuintal: Math.max(penalty, 15), statusClass: "bg-amber-100 text-amber-800 border-amber-200" };
+        } else {
+          return { grade: "Grade A", penaltyPerQuintal: 0, statusClass: "bg-emerald-100 text-emerald-800 border-emerald-200" };
+        }
+      }, [qualityMetrics]);
+
+      // Handle Quality Inspection Approval & Stage Advancement
+      const handleApproveQuality = () => {
+        const baseMsp = activeInspectionToken.baseMsp;
+        const penalty = evaluatedGrade.penaltyPerQuintal;
+        const netPerQuintal = evaluatedGrade.grade === "Rejected" ? 0 : (baseMsp - penalty);
+        const finalPayout = netPerQuintal * activeInspectionToken.weight;
+
+        setTokens(prev => prev.map(tk => {
+          if (tk.id === activeInspectionToken.id) {
+            return {
+              ...tk,
+              stage: evaluatedGrade.grade === "Rejected" ? 1 : 5, // Advance to Stage 5 (Payment Initiated) or stay
+              moisture: qualityMetrics.moisture,
+              foreignMatter: qualityMetrics.foreignMatter,
+              damagedGrain: qualityMetrics.damagedGrain,
+              grade: evaluatedGrade.grade,
+              penalty: penalty,
+              netPayout: finalPayout
+            };
+          }
+          return tk;
+        }));
+
+        setQualityApprovedMsg(`Token ${activeInspectionToken.id} Quality Inspected & ${evaluatedGrade.grade} Approved! Net Payout ₹${finalPayout.toLocaleString('en-IN')} queued for DBT.`);
+        setTimeout(() => setQualityApprovedMsg(""), 5000);
+      };
+
+      // Handle SMS Simulator Action
+      const handleSendSms = (e) => {
+        e.preventDefault();
+        if (!smsInput.trim()) return;
+
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const userMsg = { sender: "user", text: smsInput, time: timeStr };
+        let replyText = "";
+
+        const inputUpper = smsInput.trim().toUpperCase();
+        if (inputUpper.startsWith("BOOK")) {
+          const parts = inputUpper.split(" ");
+          const cropName = parts[1] || "WHEAT";
+          const weightNum = parts[2] || "50";
+          const newTokenId = `TKN-2026-${Math.floor(9846 + Math.random() * 500)}`;
+          replyText = `SUCCESS! Slot Booked for ${cropName} (${weightNum} Qtl). Token: ${newTokenId}. Gate: Gate 2. Time: 08:00 AM - 10:00 AM. Est Wait: 15 mins. Present this SMS at gate.`;
+        } else if (inputUpper.startsWith("STATUS")) {
+          const parts = inputUpper.split(" ");
+          const reqId = parts[1] || "TKN-2026-9842";
+          const found = tokens.find(t => t.id.includes(reqId) || reqId.includes(t.id));
+          if (found) {
+            const stageLabels = ["Slot Booked", "Checked-In Gate", "Quality Inspection", "Weighbridge", "Payment Initiated", "DBT Disbursed"];
+            replyText = `STATUS for ${found.id}: Current Stage: [${stageLabels[found.stage - 1]}]. Gate: ${found.gate}. Est Wait: ${found.estWaitMinutes} mins. Net Payout: Rs ${found.netPayout.toLocaleString('en-IN')}.`;
+          } else {
+            replyText = `Token ${reqId} found! Current Stage: [Gate Checked-In]. Queue Position: #3. Please proceed to Inspection Bay 2.`;
+          }
+        } else {
+          replyText = `Invalid format. Reply 'BOOK WHEAT 50 12OCT' to book slot or 'STATUS TKN-9842' to check queue status. Help Hotline: 1800-180-1551.`;
+        }
+
+        const systemReply = { sender: "system", text: replyText, time: timeStr };
+        setSmsHistory([...smsHistory, userMsg, systemReply]);
+        setSmsInput("");
+      };
+
+      // Handle Officer Gate Check-In Action
+      const handleScanCheckIn = () => {
+        const found = tokens.find(t => t.id.toLowerCase() === scanInput.trim().toLowerCase());
+        if (found) {
+          setScannedResultToken(found);
+          // Update stage to Gate Checked-In (2) if it was 1
+          if (found.stage === 1) {
+            setTokens(prev => prev.map(tk => tk.id === found.id ? { ...tk, stage: 2 } : tk));
+          }
+          setScanSuccessMsg(`Farmer ${found.farmerName} (${found.id}) marked as GATED CHECKED-IN successfully!`);
+        } else {
+          // Create dummy scanned result
+          const dummyScan = {
+            id: scanInput.trim().toUpperCase() || "TKN-2026-9899",
+            farmerName: "Baldev Raj",
+            phone: "+91 98111 22334",
+            village: "Kachhwa, Karnal",
+            crop: "Wheat",
+            weight: 75,
+            gate: "Gate No. 1",
+            stage: 2,
+            vehicleNo: "HR-05-AA-3321",
+            netPayout: 170625
+          };
+          setScannedResultToken(dummyScan);
+          setScanSuccessMsg(`Scanned QR Pass Validated! Vehicle ${dummyScan.vehicleNo} checked-in at Gate 1.`);
+        }
+      };
+
+      // Fast Advance Token Stage in Queue Table
+      const advanceStage = (id) => {
+        setTokens(prev => prev.map(tk => {
+          if (tk.id === id) {
+            const nextStage = tk.stage >= 6 ? 6 : tk.stage + 1;
+            return { ...tk, stage: nextStage };
+          }
+          return tk;
+        }));
+      };
+
+      return (
+        <div className="min-h-screen flex flex-col">
+          {/* --- TOP NAVIGATION & CONTROL HEADER --- */}
+          <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-50 shadow-md">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex flex-col md:flex-row items-center justify-between py-3 gap-3">
+                {/* Brand & Mandi Details */}
+                <div className="flex items-center gap-3">
+                  <div className="bg-agri-600 p-2.5 rounded-xl shadow-md text-white flex items-center justify-center">
+                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 002 2h1.5a2.5 2.5 0 002.5-2.5V7a2 2 0 00-2-2h-1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h1 className="text-xl font-black tracking-tight text-white">{t.appTitle}</h1>
+                      <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Verified Platform</span>
+                    </div>
+                    <p className="text-xs text-slate-400 hidden sm:block">{t.tagline}</p>
+                  </div>
+                </div>
+
+                {/* Mandi Live Status Badge & Clock */}
+                <div className="hidden lg:flex items-center gap-4 bg-slate-800/80 px-4 py-1.5 rounded-full border border-slate-700/60 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <span className="font-semibold text-slate-200">{t.liveMandi}</span>
+                  </div>
+                  <span className="text-slate-600">|</span>
+                  <div className="text-emerald-400 font-mono font-bold">Capacity: 74%</div>
+                  <span className="text-slate-600">|</span>
+                  <div className="text-slate-300 font-mono">{currentTime}</div>
+                </div>
+
+                {/* Role Switcher & Multi-Language Controls */}
+                <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                  {/* Language Selector */}
+                  <div className="flex items-center bg-slate-800 rounded-lg p-1 border border-slate-700 text-xs">
+                    <button 
+                      onClick={() => setLang('en')} 
+                      className={`px-2.5 py-1 rounded-md font-semibold transition ${lang === 'en' ? 'bg-agri-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
+                      EN
+                    </button>
+                    <button 
+                      onClick={() => setLang('hi')} 
+                      className={`px-2.5 py-1 rounded-md font-semibold transition ${lang === 'hi' ? 'bg-agri-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
+                      हिंदी
+                    </button>
+                    <button 
+                      onClick={() => setLang('ta')} 
+                      className={`px-2.5 py-1 rounded-md font-semibold transition ${lang === 'ta' ? 'bg-agri-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
+                      தமிழ்
+                    </button>
+                  </div>
+
+                  {/* Role Switcher Toggle */}
+                  <div className="bg-slate-800 p-1 rounded-xl border border-slate-700 flex items-center gap-1 text-xs">
+                    <button
+                      onClick={() => { setRole('farmer'); setActiveTab('book'); }}
+                      className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-all ${role === 'farmer' ? 'bg-agri-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                      <span>{t.roleFarmer}</span>
+                    </button>
+                    <button
+                      onClick={() => { setRole('officer'); setActiveTab('scan'); }}
+                      className={`px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-all ${role === 'officer' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                      <span>{t.roleOfficer}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sub-Header Navigation Tabs */}
+              <div className="flex overflow-x-auto gap-2 border-t border-slate-800/80 py-2 scrollbar-none">
+                {role === 'farmer' ? (
+                  <>
+                    <button
+                      onClick={() => setActiveTab('book')}
+                      className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 whitespace-nowrap transition ${activeTab === 'book' ? 'bg-agri-600/20 text-agri-400 border border-agri-500/40' : 'text-slate-400 hover:bg-slate-800'}`}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                      {t.tabBook}
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('queue')}
+                      className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 whitespace-nowrap transition ${activeTab === 'queue' ? 'bg-agri-600/20 text-agri-400 border border-agri-500/40' : 'text-slate-400 hover:bg-slate-800'}`}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                      {t.tabQueue}
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('sms')}
+                      className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 whitespace-nowrap transition ${activeTab === 'sms' ? 'bg-agri-600/20 text-agri-400 border border-agri-500/40' : 'text-slate-400 hover:bg-slate-800'}`}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                      {t.tabSms}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setActiveTab('scan')}
+                      className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 whitespace-nowrap transition ${activeTab === 'scan' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'text-slate-400 hover:bg-slate-800'}`}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                      {t.tabScan}
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('quality')}
+                      className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 whitespace-nowrap transition ${activeTab === 'quality' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'text-slate-400 hover:bg-slate-800'}`}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path></svg>
+                      {t.tabQuality}
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('traffic')}
+                      className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 whitespace-nowrap transition ${activeTab === 'traffic' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'text-slate-400 hover:bg-slate-800'}`}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                      {t.tabTraffic}
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('analytics')}
+                      className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 whitespace-nowrap transition ${activeTab === 'analytics' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'text-slate-400 hover:bg-slate-800'}`}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+                      {t.tabAnalytics}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </header>
+
+          {/* --- MAIN CONTENT CONTAINER --- */}
+          <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+            {/* ======================================================== */}
+            {/* MODULE 1: SMART SLOT BOOKING ENGINE (FARMER PORTAL)     */}
+            {/* ======================================================== */}
+            {role === 'farmer' && activeTab === 'book' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                {/* Left Form: Booking Parameters */}
+                <div className="lg:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 space-y-6">
+                  <div className="border-b border-slate-100 pb-4">
+                    <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                      <span className="w-8 h-8 rounded-lg bg-agri-100 text-agri-700 flex items-center justify-center font-bold">1</span>
+                      <span>{t.tabBook}</span>
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-1">Book your Mandi slot in advance to avoid queues and get instant MSP digital receipt.</p>
+                  </div>
+
+                  <form onSubmit={handleBookSlot} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Farmer Full Name</label>
+                        <input 
+                          type="text"
+                          required
+                          value={bookingForm.farmerName}
+                          onChange={e => setBookingForm({...bookingForm, farmerName: e.target.value})}
+                          className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-agri-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Mobile Number (Aadhaar Linked)</label>
+                        <input 
+                          type="text"
+                          required
+                          value={bookingForm.phone}
+                          onChange={e => setBookingForm({...bookingForm, phone: e.target.value})}
+                          className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-agri-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">{t.selectCrop}</label>
+                        <select 
+                          value={bookingForm.crop}
+                          onChange={e => setBookingForm({...bookingForm, crop: e.target.value})}
+                          className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-agri-500">
+                          <option value="Wheat">{t.cropWheat} - MSP ₹2,275/Qtl</option>
+                          <option value="Paddy">{t.cropPaddy} - MSP ₹2,183/Qtl</option>
+                          <option value="Maize">{t.cropMaize} - MSP ₹2,090/Qtl</option>
+                          <option value="Chana">{t.cropChana} - MSP ₹5,440/Qtl</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">{t.cropWeight}</label>
+                        <input 
+                          type="number"
+                          min="5"
+                          max="500"
+                          required
+                          value={bookingForm.weight}
+                          onChange={e => setBookingForm({...bookingForm, weight: e.target.value})}
+                          className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-agri-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">{t.preferredDate}</label>
+                        <input 
+                          type="date"
+                          required
+                          value={bookingForm.date}
+                          onChange={e => setBookingForm({...bookingForm, date: e.target.value})}
+                          className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-agri-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">{t.preferredSlot}</label>
+                        <select 
+                          value={bookingForm.timeSlot}
+                          onChange={e => setBookingForm({...bookingForm, timeSlot: e.target.value})}
+                          className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-agri-500">
+                          <option value="08:00 AM - 10:00 AM">08:00 AM - 10:00 AM (Early Slot)</option>
+                          <option value="10:00 AM - 12:00 PM">10:00 AM - 12:00 PM (Regular)</option>
+                          <option value="12:00 PM - 02:00 PM">12:00 PM - 02:00 PM (Peak)</option>
+                          <option value="02:00 PM - 04:00 PM">02:00 PM - 04:00 PM (Afternoon)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* DYNAMIC CAPACITY CHECK METER */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                      <div className="flex justify-between items-center text-xs font-bold">
+                        <span className="text-slate-700">{t.capacityMeter} ({bookingForm.timeSlot}):</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[11px] ${currentSlotOccupancy > 85 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                          {currentSlotOccupancy}% Occupied
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-500 ${currentSlotOccupancy > 85 ? 'bg-amber-500' : 'bg-agri-600'}`}
+                          style={{ width: `${currentSlotOccupancy}%` }}>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        {currentSlotOccupancy > 85 ? '⚠️ High Demand Window: We recommend arriving 15 minutes before your time slot.' : '✓ Optimal Traffic Flow: Fast gate entry expected.'}
+                      </p>
+                    </div>
+
+                    {/* ESTIMATED MSP PAYOUT BANNER */}
+                    <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center justify-between">
+                      <div>
+                        <div className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Estimated Government MSP Payout</div>
+                        <div className="text-2xl font-black text-emerald-900 mt-0.5">
+                          ₹{(MSP_RATES[bookingForm.crop] * Number(bookingForm.weight || 0)).toLocaleString('en-IN')}
+                        </div>
+                        <div className="text-[11px] text-emerald-700">Calculated at Base MSP ₹{MSP_RATES[bookingForm.crop]}/Qtl via Direct Bank Transfer (DBT).</div>
+                      </div>
+                      <div className="hidden sm:block bg-emerald-600 text-white p-2.5 rounded-xl">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                      </div>
+                    </div>
+
+                    <button 
+                      type="submit"
+                      className="w-full bg-agri-600 hover:bg-agri-700 text-white font-extrabold py-3.5 px-6 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-base">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                      <span>{t.bookNow}</span>
+                    </button>
+                  </form>
+                </div>
+
+                {/* Right Card: Dynamic QR Code Pass & Token Card */}
+                <div className="lg:col-span-5 space-y-4">
+                  <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-sm flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-sm text-amber-400">Active Booking Pass</h3>
+                      <p className="text-xs text-slate-400">Present QR code at Mandi Entrance</p>
+                    </div>
+                    <span className="bg-agri-600 text-white text-[11px] font-bold px-3 py-1 rounded-full">Gate Gate-2</span>
+                  </div>
+
+                  {newlyCreatedToken ? (
+                    <div className="space-y-3">
+                      <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 p-3 rounded-xl text-xs font-bold text-center">
+                        🎉 Token Successfully Generated! View your digital pass below.
+                      </div>
+                      <SVGQRCodeCard token={newlyCreatedToken} />
+                    </div>
+                  ) : (
+                    <SVGQRCodeCard token={activeToken} />
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ======================================================== */}
+            {/* MODULE 2: LIVE TOKEN TRACKER & PIPELINE STAGE MONITOR    */}
+            {/* ======================================================== */}
+            {role === 'farmer' && activeTab === 'queue' && (
+              <div className="space-y-6">
+                
+                {/* Active Token Selector Dropdown */}
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-agri-100 text-agri-700 p-3 rounded-xl font-bold">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-black text-slate-900">{t.tabQueue}</h2>
+                      <p className="text-xs text-slate-500">Track real-time procurement pipeline & estimated waiting times.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <label className="text-xs font-bold text-slate-600 whitespace-nowrap">Select Token:</label>
+                    <select
+                      value={selectedTokenId}
+                      onChange={e => setSelectedTokenId(e.target.value)}
+                      className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-agri-500 w-full sm:w-auto">
+                      {tokens.map(tk => (
+                        <option key={tk.id} value={tk.id}>
+                          {tk.id} - {tk.farmerName} ({tk.crop})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* 6-STAGE INTERACTIVE PROGRESS STEPPER */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                  <div className="flex flex-col md:flex-row items-center justify-between border-b border-slate-100 pb-4 gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-agri-600 uppercase tracking-widest">Active Pipeline Tracker</span>
+                      <h3 className="text-xl font-black text-slate-900">{activeToken.farmerName} - <span className="font-mono text-agri-700">{activeToken.id}</span></h3>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl text-center">
+                        <div className="text-[10px] text-amber-700 font-bold uppercase">Queue Position</div>
+                        <div className="text-base font-black text-amber-900">{activeToken.queueNumber}</div>
+                      </div>
+                      <div className="bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl text-center">
+                        <div className="text-[10px] text-emerald-700 font-bold uppercase">Est. Wait</div>
+                        <div className="text-base font-black text-emerald-900">{activeToken.estWaitMinutes} mins</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Stepper Graphic */}
+                  <div className="py-4">
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                      {[
+                        { step: 1, label: t.stage1, icon: "📋" },
+                        { step: 2, label: t.stage2, icon: "🚛" },
+                        { step: 3, label: t.stage3, icon: "🔬" },
+                        { step: 4, label: t.stage4, icon: "⚖️" },
+                        { step: 5, label: t.stage5, icon: "💳" },
+                        { step: 6, label: t.stage6, icon: "🏦" }
+                      ].map((item) => {
+                        const isDone = activeToken.stage > item.step;
+                        const isCurrent = activeToken.stage === item.step;
+                        return (
+                          <div 
+                            key={item.step} 
+                            className={`p-3.5 rounded-xl border flex flex-col items-center text-center transition-all ${
+                              isCurrent 
+                                ? 'bg-agri-600 text-white border-agri-700 shadow-md ring-2 ring-agri-400/40 scale-105' 
+                                : isDone 
+                                ? 'bg-emerald-50 text-emerald-900 border-emerald-200' 
+                                : 'bg-slate-50 text-slate-400 border-slate-200 opacity-60'
+                            }`}>
+                            <div className="text-2xl mb-1">{item.icon}</div>
+                            <div className="text-[11px] font-bold tracking-tight">Step {item.step}</div>
+                            <div className="text-xs font-black mt-0.5 leading-tight">{item.label}</div>
+                            {isCurrent && (
+                              <span className="mt-2 text-[9px] font-extrabold uppercase bg-amber-400 text-slate-900 px-2 py-0.5 rounded-full animate-pulse">
+                                In Progress
+                              </span>
+                            )}
+                            {isDone && (
+                              <span className="mt-2 text-[9px] font-extrabold uppercase bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full">
+                                Completed ✓
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Stage Detailed Info Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                      <div className="text-xs font-bold text-slate-500 uppercase">Crop Commodity</div>
+                      <div className="text-lg font-black text-slate-900">{activeToken.crop} ({activeToken.weight} Quintals)</div>
+                      <div className="text-xs text-slate-600 mt-1">Vehicle: <span className="font-mono font-bold text-slate-800">{activeToken.vehicleNo}</span></div>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                      <div className="text-xs font-bold text-slate-500 uppercase">Assigned Gate & Bay</div>
+                      <div className="text-lg font-black text-amber-700">{activeToken.gate} (Bay #3)</div>
+                      <div className="text-xs text-slate-600 mt-1">Check-in Slot: {activeToken.timeSlot}</div>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                      <div className="text-xs font-bold text-slate-500 uppercase">Government Payout</div>
+                      <div className="text-lg font-black text-agri-700">₹{activeToken.netPayout.toLocaleString('en-IN')}</div>
+                      <div className="text-xs text-slate-600 mt-1">Grade: <span className="font-bold">{activeToken.grade}</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ======================================================== */}
+            {/* MODULE 3: FEATURE PHONE SMS & USSD SIMULATOR             */}
+            {/* ======================================================== */}
+            {role === 'farmer' && activeTab === 'sms' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div className="lg:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900">{t.smsHeading}</h2>
+                    <p className="text-xs text-slate-500 mt-1">{t.sihTag}</p>
+                  </div>
+
+                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl space-y-2 text-xs text-amber-900">
+                    <div className="font-bold text-amber-800 uppercase flex items-center gap-2">
+                      <span>💡 SMS Command Cheat Sheet for Farmers</span>
+                    </div>
+                    <ul className="space-y-1 font-mono text-[11px] list-disc list-inside">
+                      <li><strong className="text-slate-900">BOOK &lt;CROP&gt; &lt;WEIGHT&gt; &lt;DATE&gt;</strong> - e.g. <span className="bg-white px-1.5 py-0.5 rounded border border-amber-300">BOOK WHEAT 50 12OCT</span></li>
+                      <li><strong className="text-slate-900">STATUS &lt;TOKEN_ID&gt;</strong> - e.g. <span className="bg-white px-1.5 py-0.5 rounded border border-amber-300">STATUS TKN-2026-9842</span></li>
+                      <li><strong className="text-slate-900">CANCEL &lt;TOKEN_ID&gt;</strong> - Cancel slot remotely</li>
+                    </ul>
+                  </div>
+
+                  {/* SMS Input Form */}
+                  <form onSubmit={handleSendSms} className="flex gap-2">
+                    <input 
+                      type="text"
+                      value={smsInput}
+                      onChange={e => setSmsInput(e.target.value)}
+                      placeholder="Type SMS command (e.g. BOOK WHEAT 50 12OCT)"
+                      className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-agri-500"
+                    />
+                    <button 
+                      type="submit"
+                      className="bg-agri-600 hover:bg-agri-700 text-white font-bold px-5 py-3 rounded-xl shadow transition flex items-center gap-1.5">
+                      <span>Send SMS</span>
+                    </button>
+                  </form>
+
+                  {/* Quick Preset Buttons */}
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <button onClick={() => setSmsInput("BOOK WHEAT 50 12OCT")} className="bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg font-mono text-slate-700 border border-slate-300">
+                      + BOOK WHEAT 50
+                    </button>
+                    <button onClick={() => setSmsInput("BOOK PADDY 80 15OCT")} className="bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg font-mono text-slate-700 border border-slate-300">
+                      + BOOK PADDY 80
+                    </button>
+                    <button onClick={() => setSmsInput("STATUS TKN-2026-9842")} className="bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg font-mono text-slate-700 border border-slate-300">
+                      + STATUS TKN-9842
+                    </button>
+                  </div>
+                </div>
+
+                {/* Simulated Feature Phone Screen Graphic */}
+                <div className="lg:col-span-5 bg-slate-900 text-slate-100 p-5 rounded-3xl border-8 border-slate-800 shadow-2xl space-y-4 max-w-sm mx-auto w-full">
+                  <div className="flex items-center justify-between text-xs text-slate-400 border-b border-slate-800 pb-2">
+                    <div className="flex items-center gap-1">
+                      <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                      <span className="font-mono text-[10px]">GOVT-MANDI-SMS</span>
+                    </div>
+                    <div className="font-mono text-[10px]">{currentTime}</div>
+                  </div>
+
+                  {/* SMS Conversation Window */}
+                  <div className="h-80 overflow-y-auto space-y-3 p-2 text-xs font-mono scrollbar-thin">
+                    {smsHistory.map((msg, idx) => (
+                      <div key={idx} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}>
+                        <div className={`p-3 rounded-2xl max-w-[85%] text-[11px] ${
+                          msg.sender === 'user' 
+                            ? 'bg-agri-600 text-white rounded-br-none' 
+                            : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-none'
+                        }`}>
+                          {msg.text}
+                        </div>
+                        <span className="text-[9px] text-slate-500 mt-1">{msg.time}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ======================================================== */}
+            {/* MODULE 4: PROCUREMENT OFFICER - LIVE GATE SCANNER       */}
+            {/* ======================================================== */}
+            {role === 'officer' && activeTab === 'scan' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* QR Scanner Controls */}
+                <div className="lg:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900">{t.tabScan}</h2>
+                    <p className="text-xs text-slate-500 mt-1">Scan farmer QR Pass or enter Token ID upon tractor entry at gate.</p>
+                  </div>
+
+                  {/* Simulated Camera Scanner Viewport */}
+                  <div className="relative bg-slate-900 rounded-2xl h-64 flex flex-col items-center justify-center border-4 border-slate-800 overflow-hidden shadow-inner">
+                    <div className="absolute inset-0 border-2 border-dashed border-amber-400/60 m-8 rounded-xl animate-pulse-subtle flex items-center justify-center">
+                      <div className="w-full h-0.5 bg-amber-400 shadow-lg shadow-amber-400 animate-pulse"></div>
+                    </div>
+                    <svg className="w-12 h-12 text-slate-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h0.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path></svg>
+                    <p className="text-xs font-mono text-slate-400 z-10 bg-slate-900/80 px-3 py-1 rounded-full">Camera Feed Active • Point QR Code Here</p>
+                  </div>
+
+                  {/* Manual Token ID Input */}
+                  <div className="flex gap-2">
+                    <input 
+                      type="text"
+                      value={scanInput}
+                      onChange={e => setScanInput(e.target.value)}
+                      placeholder="Enter Token ID (e.g. TKN-2026-9842)"
+                      className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                    <button 
+                      onClick={handleScanCheckIn}
+                      className="bg-amber-600 hover:bg-amber-700 text-white font-extrabold px-6 py-3 rounded-xl shadow transition">
+                      Scan & Check-In
+                    </button>
+                  </div>
+
+                  {scanSuccessMsg && (
+                    <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 p-4 rounded-xl text-xs font-bold">
+                      ✓ {scanSuccessMsg}
+                    </div>
+                  )}
+                </div>
+
+                {/* Scanned Farmer Details Card */}
+                <div className="lg:col-span-5 bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+                  <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">Scanned Pass Verification</h3>
+
+                  {scannedResultToken ? (
+                    <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-slate-500">Token ID:</span>
+                        <span className="font-mono text-sm font-extrabold text-amber-700">{scannedResultToken.id}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-slate-500">Farmer Name:</span>
+                        <span className="text-sm font-bold text-slate-900">{scannedResultToken.farmerName}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-slate-500">Commodity & Weight:</span>
+                        <span className="text-sm font-bold text-agri-700">{scannedResultToken.crop} ({scannedResultToken.weight} Qtl)</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-slate-500">Vehicle Number:</span>
+                        <span className="font-mono text-sm font-bold text-slate-800">{scannedResultToken.vehicleNo}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-slate-500">Check-in Gate:</span>
+                        <span className="text-sm font-bold text-amber-600">{scannedResultToken.gate}</span>
+                      </div>
+
+                      <div className="pt-2">
+                        <button 
+                          onClick={() => { setActiveTab('quality'); setInspectionTokenId(scannedResultToken.id); }}
+                          className="w-full bg-agri-600 hover:bg-agri-700 text-white font-bold py-2.5 rounded-xl shadow text-xs">
+                          Proceed to Quality Inspection →
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-slate-400 text-xs">
+                      No token scanned yet. Scan QR code above or type Token ID.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ======================================================== */}
+            {/* MODULE 5: AUTOMATED DIGITAL QUALITY & MSP EVALUATOR      */}
+            {/* ======================================================== */}
+            {role === 'officer' && activeTab === 'quality' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                {/* Inputs: Moisture & Grain Quality Sliders */}
+                <div className="lg:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-6">
+                  <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+                    <div>
+                      <h2 className="text-xl font-black text-slate-900">{t.tabQuality}</h2>
+                      <p className="text-xs text-slate-500 mt-0.5">Automated FCI/CACP moisture penalty & MSP payout calculator.</p>
+                    </div>
+                    <select
+                      value={inspectionTokenId}
+                      onChange={e => setInspectionTokenId(e.target.value)}
+                      className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800">
+                      {tokens.map(tk => (
+                        <option key={tk.id} value={tk.id}>{tk.id} - {tk.farmerName}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-5">
+                    {/* Moisture Content Slider */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                      <div className="flex justify-between items-center text-xs font-bold">
+                        <span className="text-slate-700">{t.moisture} (Ideal: &lt;12%):</span>
+                        <span className={`text-sm font-mono px-2 py-0.5 rounded ${qualityMetrics.moisture > 14 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-800'}`}>
+                          {qualityMetrics.moisture}%
+                        </span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="8.0" 
+                        max="18.0" 
+                        step="0.1"
+                        value={qualityMetrics.moisture}
+                        onChange={e => setQualityMetrics({...qualityMetrics, moisture: parseFloat(e.target.value)})}
+                        className="w-full accent-amber-600"
+                      />
+                    </div>
+
+                    {/* Foreign Matter Slider */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                      <div className="flex justify-between items-center text-xs font-bold">
+                        <span className="text-slate-700">{t.foreignMatter} (Limit: &lt;1.2%):</span>
+                        <span className="text-sm font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-800">
+                          {qualityMetrics.foreignMatter}%
+                        </span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0.0" 
+                        max="5.0" 
+                        step="0.1"
+                        value={qualityMetrics.foreignMatter}
+                        onChange={e => setQualityMetrics({...qualityMetrics, foreignMatter: parseFloat(e.target.value)})}
+                        className="w-full accent-amber-600"
+                      />
+                    </div>
+
+                    {/* Damaged Grain Slider */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                      <div className="flex justify-between items-center text-xs font-bold">
+                        <span className="text-slate-700">{t.damagedGrain} (Limit: &lt;2.0%):</span>
+                        <span className="text-sm font-mono px-2 py-0.5 rounded bg-slate-200 text-slate-800">
+                          {qualityMetrics.damagedGrain}%
+                        </span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0.0" 
+                        max="6.0" 
+                        step="0.1"
+                        value={qualityMetrics.damagedGrain}
+                        onChange={e => setQualityMetrics({...qualityMetrics, damagedGrain: parseFloat(e.target.value)})}
+                        className="w-full accent-amber-600"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Result Card: Grade Evaluator & Payout */}
+                <div className="lg:col-span-5 bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+                  <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">Automated Payout Summary</h3>
+
+                  <div className={`p-4 rounded-xl border text-center font-bold ${evaluatedGrade.statusClass}`}>
+                    <div className="text-xs uppercase tracking-wider">Evaluated Quality Grade</div>
+                    <div className="text-xl font-black mt-1">{evaluatedGrade.grade}</div>
+                  </div>
+
+                  <div className="space-y-2.5 text-xs text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Base MSP Rate:</span>
+                      <span className="font-bold">₹{activeInspectionToken.baseMsp}/Qtl</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Crop Quantity:</span>
+                      <span className="font-bold">{activeInspectionToken.weight} Quintals</span>
+                    </div>
+                    <div className="flex justify-between text-red-600">
+                      <span>Quality Penalty Deduction:</span>
+                      <span className="font-bold">- ₹{evaluatedGrade.penaltyPerQuintal}/Qtl</span>
+                    </div>
+                    <div className="border-t border-slate-200 pt-2 flex justify-between text-sm font-black text-slate-900">
+                      <span>Net Farmer Payout:</span>
+                      <span className="text-agri-700">
+                        ₹{(evaluatedGrade.grade === "Rejected" ? 0 : (activeInspectionToken.baseMsp - evaluatedGrade.penaltyPerQuintal) * activeInspectionToken.weight).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {qualityApprovedMsg && (
+                    <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 p-3 rounded-xl text-xs font-bold">
+                      ✓ {qualityApprovedMsg}
+                    </div>
+                  )}
+
+                  <button 
+                    onClick={handleApproveQuality}
+                    className="w-full bg-agri-600 hover:bg-agri-700 text-white font-extrabold py-3 rounded-xl shadow transition text-sm">
+                    {t.approvePayment}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ======================================================== */}
+            {/* MODULE 6: MANDI TRAFFIC & QUEUE MANAGEMENT TABLE         */}
+            {/* ======================================================== */}
+            {role === 'officer' && activeTab === 'traffic' && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900">{t.tabTraffic}</h2>
+                    <p className="text-xs text-slate-500 mt-0.5">Real-time arrival queue, gate controls, and stage override actions.</p>
+                  </div>
+                  <div className="bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl text-xs font-bold text-emerald-800">
+                    Active Queue Count: {tokens.length} Vehicles
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        <th className="p-3">Token ID</th>
+                        <th className="p-3">Farmer Name</th>
+                        <th className="p-3">Crop / Qtl</th>
+                        <th className="p-3">Gate</th>
+                        <th className="p-3">Current Stage</th>
+                        <th className="p-3">Net Payout</th>
+                        <th className="p-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-800">
+                      {tokens.map(tk => {
+                        const stageNames = [t.stage1, t.stage2, t.stage3, t.stage4, t.stage5, t.stage6];
+                        return (
+                          <tr key={tk.id} className="hover:bg-slate-50/80 transition">
+                            <td className="p-3 font-mono font-bold text-amber-700">{tk.id}</td>
+                            <td className="p-3 font-bold text-slate-900">{tk.farmerName}</td>
+                            <td className="p-3">{tk.crop} ({tk.weight} Q)</td>
+                            <td className="p-3">{tk.gate}</td>
+                            <td className="p-3">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                                tk.stage === 6 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                              }`}>
+                                Step {tk.stage}: {stageNames[tk.stage - 1]}
+                              </span>
+                            </td>
+                            <td className="p-3 font-extrabold text-agri-800">₹{tk.netPayout.toLocaleString('en-IN')}</td>
+                            <td className="p-3 text-right">
+                              <button 
+                                onClick={() => advanceStage(tk.id)}
+                                className="bg-slate-800 hover:bg-slate-900 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shadow transition">
+                                Advance Stage →
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* ======================================================== */}
+            {/* MODULE 7: PREDICTIVE BOTTLENECK ANALYTICS (RECHARTS SVG)  */}
+            {/* ======================================================== */}
+            {role === 'officer' && activeTab === 'analytics' && (
+              <div className="space-y-6">
+                
+                {/* Bottleneck Warning Banner */}
+                <div className="bg-amber-50 border border-amber-300 p-4 rounded-2xl flex items-center gap-3">
+                  <div className="bg-amber-500 text-white p-2.5 rounded-xl">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-amber-900 text-sm">{t.trafficBottleneck}</h3>
+                    <p className="text-xs text-amber-800 mt-0.5">Automated AI dispatch is re-routing 15% incoming tractors to Gate 3 & Gate 4 to balance weighbridge load.</p>
+                  </div>
+                </div>
+
+                {/* Metrics Overview Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div className="text-xs font-bold text-slate-500 uppercase">Today's Total Procurement</div>
+                    <div className="text-2xl font-black text-slate-900 mt-1">18,450 Qtl</div>
+                    <div className="text-[11px] text-emerald-600 font-semibold mt-1">↑ 14% higher than yesterday</div>
+                  </div>
+                  <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div className="text-xs font-bold text-slate-500 uppercase">{t.totalDisbursedToday}</div>
+                    <div className="text-2xl font-black text-agri-700 mt-1">₹ 3,97,42,000</div>
+                    <div className="text-[11px] text-slate-500 font-medium mt-1">100% Direct Bank Transfer (DBT)</div>
+                  </div>
+                  <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div className="text-xs font-bold text-slate-500 uppercase">Average Turnaround Time</div>
+                    <div className="text-2xl font-black text-amber-600 mt-1">24 Minutes</div>
+                    <div className="text-[11px] text-emerald-600 font-semibold mt-1">↓ Reduced from 3.5 hours</div>
+                  </div>
+                </div>
+
+                {/* VISUAL CHART 1: HOURLY ARRIVALS VS WEIGHBRIDGE CAPACITY */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-black text-slate-900 text-base">{t.capacityGraphTitle}</h3>
+                    <div className="flex items-center gap-4 text-xs font-bold">
+                      <span className="flex items-center gap-1.5"><span className="w-3 h-3 bg-agri-600 rounded"></span> Arrival Traffic</span>
+                      <span className="flex items-center gap-1.5"><span className="w-3 h-3 bg-slate-300 rounded"></span> Weighbridge Limit</span>
+                    </div>
+                  </div>
+
+                  {/* High Resolution SVG Hourly Chart */}
+                  <div className="h-64 w-full bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col justify-between">
+                    <div className="flex-1 flex items-end justify-between gap-2 px-2 pb-2 border-b border-slate-200">
+                      {[
+                        { time: "08 AM", arrival: 40, limit: 80 },
+                        { time: "09 AM", arrival: 65, limit: 80 },
+                        { time: "10 AM", arrival: 78, limit: 80 },
+                        { time: "11 AM", arrival: 95, limit: 80, bottleneck: true },
+                        { time: "12 PM", arrival: 92, limit: 80, bottleneck: true },
+                        { time: "01 PM", arrival: 70, limit: 80 },
+                        { time: "02 PM", arrival: 55, limit: 80 },
+                        { time: "03 PM", arrival: 42, limit: 80 }
+                      ].map((item, idx) => (
+                        <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group relative">
+                          {/* Tooltip on hover */}
+                          <div className="absolute -top-8 bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition">
+                            {item.arrival} Tractors
+                          </div>
+                          <div className="w-full flex justify-center items-end gap-1 h-full">
+                            <div 
+                              className={`w-1/2 rounded-t-md transition-all ${item.bottleneck ? 'bg-amber-500' : 'bg-agri-600'}`}
+                              style={{ height: `${(item.arrival / 100) * 100}%` }}>
+                            </div>
+                            <div 
+                              className="w-1/2 bg-slate-300 rounded-t-md"
+                              style={{ height: `${(item.limit / 100) * 100}%` }}>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-500 mt-2">{item.time}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* DAILY PROCUREMENT TARGET PROGRESS BAR */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+                  <div className="flex justify-between items-center text-xs font-bold">
+                    <span className="text-slate-800">{t.dailyTarget} (Target: 25,000 Quintals):</span>
+                    <span className="text-agri-700">18,450 Quintals (73.8% Complete)</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-4 rounded-full overflow-hidden p-0.5 border border-slate-200">
+                    <div className="bg-agri-600 h-full rounded-full transition-all duration-1000" style={{ width: '73.8%' }}></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </main>
+
+          {/* --- FOOTER --- */}
+          <footer className="bg-slate-900 text-slate-400 border-t border-slate-800 py-6 text-center text-xs">
+            <div className="max-w-7xl mx-auto px-4 space-y-1">
+              <p className="font-semibold text-slate-300">e-Mandi Suvidha — Smart Mandi Procurement & Queue Management System</p>
+              <p className="text-slate-500">Designed with Agriculture Greenery Theme • Multi-Lingual Accessible Interface for Indian Farmers</p>
+            </div>
+          </footer>
+        </div>
+      );
+    }
+
+    // Render App
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<MandiApp />);
+  </script>
+</body>
+</html>
